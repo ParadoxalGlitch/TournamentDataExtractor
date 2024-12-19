@@ -1,5 +1,6 @@
 import sys
 import xml.etree.ElementTree as ET
+from datetime import datetime
 
 if len(sys.argv) < 2:
     print("Please drag and drop a tournament file into the program")
@@ -9,8 +10,9 @@ if len(sys.argv) < 2:
 file_path = sys.argv[1]
 
 # Load XML (or any file type) as long as it is in XML format
-tree = ET.parse(file_path)
-root = tree.getroot()
+with open(file_path, "r", encoding="utf-8") as file:
+    tree = ET.parse(file)
+    root = tree.getroot()
 
 # Get tournament type (not final)
 tournament_type = root.attrib['type']
@@ -29,6 +31,12 @@ for round_node in root.findall(".//round"):
             player1_node = match.find('player1')
             player2_node = match.find('player2')
             table_number = match.find('tablenumber').text if match.find('tablenumber') is not None else "Unknown"
+            time = match.find('timestamp').text if match.find('timestamp') is not None else "Unkown"
+            timestamp = time.split()[0] # Takes only the date from the timestamp
+
+            # Date format conversion
+            timestamp_converted = datetime.strptime(timestamp, "%m/%d/%Y")
+            timestamp_converted = timestamp_converted.strftime("%d/%m/%Y")
 
             # Obtain player IDs
             if outcome in ('5', '8'):
@@ -48,10 +56,46 @@ for round_node in root.findall(".//round"):
                 "player1": player1_id, 
                 "player2": player2_id, 
                 "outcome": outcome,
+                "timestamp_converted": timestamp_converted
+
             }
             matchups.append(matchup)
     else:
         print(f"Ignoring node {ET.tostring(round_node)}, not a match node, but a match drop node")
+
+
+
+# Get player information
+
+players = []
+players_node = root.findall(".players")
+
+for player_info in players_node[0].findall(".player"):
+
+    player_id = player_info.attrib.get('userid')
+    firstname = player_info.find('firstname').text
+    lastname = player_info.find('lastname').text
+    lastnames = lastname.split()
+
+    if len(lastnames) == 1:
+        lastname1 = lastnames[0]
+        lastname2 = ' '
+    else:
+        lastname1 = lastnames[0]
+        lastname2 = lastnames[1] 
+
+    player = {
+        "player_id": player_id,
+        "firstname": firstname,
+        "lastname1": lastname1, 
+        "lastname2": lastname2, 
+    }
+    
+    players.append(player)
+
+
+
+
 
 # Get the podium
 standings = root.find(".//standings")
@@ -64,8 +108,8 @@ for player in standings.findall(".//player[@place]"):
 # Order the podium by place
 podium = sorted(podium, key=lambda x: int(x['place']))
 
-# Store all the data in the output file
-with open('output.txt', 'w') as file:
+# Store all the individual matchup in the output file
+with open('individual_matchups.txt', 'w', encoding="utf-8") as file:
     for matchup in matchups:
         # Player 1
         file.write(f"{matchup['player1']}\t{matchup['table']}\t{matchup['round']}\t")
@@ -80,7 +124,8 @@ with open('output.txt', 'w') as file:
         elif matchup['outcome'] == '8':
             file.write(f"1\t")
 
-        file.write(f"{tournament_type}\n")
+        file.write(f"{tournament_type}\t")
+        file.write(f"{matchup['timestamp_converted']}\n")
 
         # Player 2
         file.write(f"{matchup['player2']}\t{matchup['table']}\t{matchup['round']}\t")
@@ -96,7 +141,15 @@ with open('output.txt', 'w') as file:
             file.write(f"2\t")
 
 
-        file.write(f"{tournament_type}\n")
+        file.write(f"{tournament_type}\t")
+        file.write(f"{matchup['timestamp_converted']}\n")
+
+
+# Store all the player data in the output file
+with open('players_info.txt', 'w', encoding="utf-8") as file:
+    for player in players:
+        file.write(f"{player['player_id']}\t{player['firstname']}\t{player['lastname1']}\t{player['lastname2']}\t{player['firstname']} {player['lastname1']}\n")
+
 
 # Prints top 4
 print("\nPodio:")
