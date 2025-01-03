@@ -1,8 +1,9 @@
 tournament_files/
 
+output_files/
+
 *.xml
 
 *.tdf
 
 *.txt
-

@@ -1,4 +1,5 @@
 import sys
+import os
 import xml.etree.ElementTree as ET
 from datetime import datetime
 
@@ -14,8 +15,20 @@ with open(file_path, "r", encoding="utf-8") as file:
     tree = ET.parse(file)
     root = tree.getroot()
 
+# Create output files folder if not exixts
+os.makedirs('output_files', exist_ok=True)
+
 # Get tournament type (not final)
 tournament_type = root.attrib['type']
+
+
+# Get tournament date
+data_node = root.find(".//data")
+tournament_date = data_node.find('startdate').text if data_node.find('startdate') is not None else "Unknown"
+
+# Date format conversion
+td_converted = datetime.strptime(tournament_date, "%m/%d/%Y")
+td_converted = td_converted.strftime("%d/%m/%Y")
 
 # Get every matchups
 matchups = []
@@ -31,12 +44,6 @@ for round_node in root.findall(".//round"):
             player1_node = match.find('player1')
             player2_node = match.find('player2')
             table_number = match.find('tablenumber').text if match.find('tablenumber') is not None else "Unknown"
-            time = match.find('timestamp').text if match.find('timestamp') is not None else "Unkown"
-            timestamp = time.split()[0] # Takes only the date from the timestamp
-
-            # Date format conversion
-            timestamp_converted = datetime.strptime(timestamp, "%m/%d/%Y")
-            timestamp_converted = timestamp_converted.strftime("%d/%m/%Y")
 
             # Obtain player IDs
             if outcome in ('5', '8'):
@@ -56,8 +63,7 @@ for round_node in root.findall(".//round"):
                 "player1": player1_id, 
                 "player2": player2_id, 
                 "outcome": outcome,
-                "timestamp_converted": timestamp_converted
-
+                "tournament_date": tournament_date,
             }
             matchups.append(matchup)
     else:
@@ -82,7 +88,7 @@ for player_info in players_node[0].findall(".player"):
         lastname2 = ' '
     else:
         lastname1 = lastnames[0]
-        lastname2 = lastnames[1] 
+        lastname2 = " ".join(lastnames[1:])
 
     player = {
         "player_id": player_id,
@@ -102,14 +108,21 @@ standings = root.find(".//standings")
 podium = []
 for player in standings.findall(".//player[@place]"):
     place = player.attrib['place']
-    user_id = player.attrib['id']
-    podium.append({"place": place, "name": user_id})
+    player_id = player.attrib['id']
 
-# Order the podium by place
-podium = sorted(podium, key=lambda x: int(x['place']))
+    podium_pos = {
+        "player_id": player_id,
+        "tournament_date": tournament_date,
+        "tournament_type": tournament_type,
+        "place": place,
+    }
+
+    podium.append(podium_pos)
+
+
 
 # Store all the individual matchup in the output file
-with open('individual_matchups.txt', 'w', encoding="utf-8") as file:
+with open('output_files/players_rounds.txt', 'w', encoding="utf-8") as file:
     for matchup in matchups:
         # Player 1
         file.write(f"{matchup['player1']}\t{matchup['table']}\t{matchup['round']}\t")
@@ -125,7 +138,7 @@ with open('individual_matchups.txt', 'w', encoding="utf-8") as file:
             file.write(f"1\t")
 
         file.write(f"{tournament_type}\t")
-        file.write(f"{matchup['timestamp_converted']}\n")
+        file.write(f"{matchup['tournament_date']}\n")
 
         # Player 2
         file.write(f"{matchup['player2']}\t{matchup['table']}\t{matchup['round']}\t")
@@ -142,16 +155,51 @@ with open('individual_matchups.txt', 'w', encoding="utf-8") as file:
 
 
         file.write(f"{tournament_type}\t")
-        file.write(f"{matchup['timestamp_converted']}\n")
+        file.write(f"{matchup['tournament_date']}\n")
 
 
 # Store all the player data in the output file
-with open('players_info.txt', 'w', encoding="utf-8") as file:
+with open('output_files/players_info.txt', 'w', encoding="utf-8") as file:
     for player in players:
         file.write(f"{player['player_id']}\t{player['firstname']}\t{player['lastname1']}\t{player['lastname2']}\t{player['firstname']} {player['lastname1']}\n")
 
+# Store all the podium data (standings) in the output file
+with open('output_files/standings.txt', 'w', encoding="utf-8") as file:
+    for podium_pos in podium:
+        file.write(f"{podium_pos['player_id']}\t{podium_pos['tournament_date']}\t{podium_pos['tournament_type']}\t{podium_pos['place']}\n")
 
-# Prints top 4
-print("\nPodio:")
-for place in podium[:4]:
-    print(place)
+with open('output_files/matchups.txt', 'w', encoding="utf-8") as file:
+    for matchup in matchups:
+        # Player 1
+        file.write(f"{matchup['player1']}\t")
+        if matchup['outcome'] == '1':
+            file.write(f"1\t")
+        elif matchup['outcome'] == '2':
+            file.write(f"2\t")
+        elif matchup['outcome'] == '3':
+            file.write(f"3\t")
+        elif matchup['outcome'] == '5':
+            file.write(f"1\t")
+        elif matchup['outcome'] == '8':
+            file.write(f"1\t")
+
+        # Player 2
+        file.write(f"{matchup['player2']}\t")
+        if matchup['outcome'] == '1':
+            file.write(f"2\t")
+        elif matchup['outcome'] == '2':
+            file.write(f"1\t")
+        elif matchup['outcome'] == '3':
+            file.write(f"3\t")
+        elif matchup['outcome'] == '5': # player2 outcome in "bye" matches is a loss
+            file.write(f"2\t")
+        elif matchup['outcome'] == '8': # player2 outcome in "no show" matches is a loss
+            file.write(f"2\t")
+
+
+        file.write(f"{tournament_type}\t")
+        file.write(f"{tournament_date}\n")
+
+# Prints end of program
+print("\nEnd of program")
+
