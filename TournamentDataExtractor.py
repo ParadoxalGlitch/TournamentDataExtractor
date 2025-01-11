@@ -63,7 +63,7 @@ for round_node in root.findall(".//round"):
                 "player1": player1_id, 
                 "player2": player2_id, 
                 "outcome": outcome,
-                "tournament_date": tournament_date,
+                "tournament_date": td_converted,
             }
             matchups.append(matchup)
     else:
@@ -112,7 +112,7 @@ for player in standings.findall(".//player[@place]"):
 
     podium_pos = {
         "player_id": player_id,
-        "tournament_date": tournament_date,
+        "tournament_date": td_converted,
         "tournament_type": tournament_type,
         "place": place,
     }
@@ -198,7 +198,7 @@ with open('output_files/matchups.txt', 'w', encoding="utf-8") as file:
 
 
         file.write(f"{tournament_type}\t")
-        file.write(f"{tournament_date}\n")
+        file.write(f"{td_converted}\n")
 
 # Prints end of program
 print("\nEnd of program")
