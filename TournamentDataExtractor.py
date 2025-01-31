@@ -18,6 +18,17 @@ with open(file_path, "r", encoding="utf-8") as file:
 # Create output files folder if not exixts
 os.makedirs('output_files', exist_ok=True)
 
+
+# Create log file
+log_file = open("output_files/log_file.txt", "a")
+
+def log_message(message):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    log_file.write(f"[{timestamp}] {message}\n")
+    log_file.flush()
+
+
+
 # Get tournament type (not final)
 tournament_type = root.attrib['type']
 
@@ -106,18 +117,23 @@ for player_info in players_node[0].findall(".player"):
 # Get the podium
 standings = root.find(".//standings")
 podium = []
-for player in standings.findall(".//player[@place]"):
-    place = player.attrib['place']
-    player_id = player.attrib['id']
 
-    podium_pos = {
-        "player_id": player_id,
-        "tournament_date": td_converted,
-        "tournament_type": tournament_type,
-        "place": place,
-    }
+if (standings is not None):
+    for player in standings.findall(".//player[@place]"):
+        place = player.attrib['place']
+        player_id = player.attrib['id']
 
-    podium.append(podium_pos)
+        podium_pos = {
+            "player_id": player_id,
+            "tournament_date": td_converted,
+            "tournament_type": tournament_type,
+            "place": place,
+        }
+
+        podium.append(podium_pos)
+
+else:
+    log_message("No standings found")
 
 
 
@@ -164,9 +180,10 @@ with open('output_files/players_info.txt', 'w', encoding="utf-8") as file:
         file.write(f"{player['player_id']}\t{player['firstname']}\t{player['lastname1']}\t{player['lastname2']}\t{player['firstname']} {player['lastname1']}\n")
 
 # Store all the podium data (standings) in the output file
-with open('output_files/standings.txt', 'w', encoding="utf-8") as file:
-    for podium_pos in podium:
-        file.write(f"{podium_pos['player_id']}\t{podium_pos['tournament_date']}\t{podium_pos['tournament_type']}\t{podium_pos['place']}\n")
+if podium:
+    with open('output_files/standings.txt', 'w', encoding="utf-8") as file:
+        for podium_pos in podium:
+            file.write(f"{podium_pos['player_id']}\t{podium_pos['tournament_date']}\t{podium_pos['tournament_type']}\t{podium_pos['place']}\n")
 
 with open('output_files/matchups.txt', 'w', encoding="utf-8") as file:
     for matchup in matchups:
@@ -200,6 +217,9 @@ with open('output_files/matchups.txt', 'w', encoding="utf-8") as file:
         file.write(f"{tournament_type}\t")
         file.write(f"{td_converted}\n")
 
+
+file.close()
+log_file.close()
 # Prints end of program
 print("\nEnd of program")
 
