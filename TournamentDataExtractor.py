@@ -2,6 +2,25 @@ import sys
 import os
 import xml.etree.ElementTree as ET
 from datetime import datetime
+import tkinter as tk
+from tkinter import filedialog, messagebox
+
+
+# Function that the display uses to get input from the user
+def process_input():
+    global store, tournament_type
+    store = store_entry.get()
+    tournament_type = tournament_type_entry.get()
+    print("changed everything")
+    
+    if not store or not tournament_type:
+        messagebox.showwarning("No empty values are allowed")
+        return
+
+    overlay.destroy()
+
+
+
 
 if len(sys.argv) < 2:
     print("Please drag and drop a tournament file into the program")
@@ -28,9 +47,25 @@ def log_message(message):
     log_file.flush()
 
 
+# Create the input window
+overlay = tk.Tk()
+overlay.title("Tournament Data Extractor")
 
-# Get tournament type (not final)
-tournament_type = root.attrib['type']
+# Create the "store" input
+tk.Label(overlay, text="Store:").grid(row=0, column=0)
+store_entry = tk.Entry(overlay)
+store_entry.grid(row=0, column=1)
+
+# Create the "tournament_type" input
+tk.Label(overlay, text="Tournament type:").grid(row=1, column=0)
+tournament_type_entry = tk.Entry(overlay)
+tournament_type_entry.grid(row=1, column=1)
+
+# Create the "Confirm" button
+tk.Button(overlay, text="Confirm", command=process_input).grid(row=2, column=0, columnspan=2)
+
+# Displays the window
+overlay.mainloop()
 
 
 # Get tournament date
@@ -154,7 +189,8 @@ with open('output_files/players_rounds.txt', 'w', encoding="utf-8") as file:
             file.write(f"1\t")
 
         file.write(f"{tournament_type}\t")
-        file.write(f"{matchup['tournament_date']}\n")
+        file.write(f"{matchup['tournament_date']}\t")
+        file.write(f"{store}\n")
 
         # Player 2
         file.write(f"{matchup['player2']}\t{matchup['table']}\t{matchup['round']}\t")
@@ -171,7 +207,8 @@ with open('output_files/players_rounds.txt', 'w', encoding="utf-8") as file:
 
 
         file.write(f"{tournament_type}\t")
-        file.write(f"{matchup['tournament_date']}\n")
+        file.write(f"{matchup['tournament_date']}\t")
+        file.write(f"{store}\n")
 
 
 # Store all the player data in the output file
@@ -215,7 +252,9 @@ with open('output_files/matchups.txt', 'w', encoding="utf-8") as file:
 
 
         file.write(f"{tournament_type}\t")
-        file.write(f"{td_converted}\n")
+        file.write(f"{td_converted}\t")
+        file.write(f"{matchup['round']}\t")
+        file.write(f"{store}\n")
 
 
 file.close()
